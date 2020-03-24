@@ -253,6 +253,11 @@ void CustomFComputeDispatcher(const std::string op_name,
   }
 #endif
 
+  mxnet::common::random::RandGenerator<gpu, float> *pgen =
+      ctx.requested[1].get_parallel_random<gpu, float>();
+  void* cpu_states = nullptr;
+  void* gpu_states = pgen->GetStates();
+
   CHECK((fcomp_fp != nullptr && state_ptr == nullptr)
         || (fcomp_fp == nullptr && state_ptr != nullptr))
     << "Can only register either regular op or stateful op for '" << op_name << "'";
@@ -275,7 +280,8 @@ void CustomFComputeDispatcher(const std::string op_name,
                     sparse_malloc, &sparse_alloc, in_stypes.data(), out_stypes.data(),
                     in_indices.data(), out_indices.data(), in_indptr.data(), out_indptr.data(),
                     in_indices_shapes.data(), out_indices_shapes.data(),
-                    in_indptr_shapes.data(), out_indptr_shapes.data()))
+                    in_indptr_shapes.data(), out_indptr_shapes.data(),
+                    cpu_states, gpu_states))
       << "Error calling FCompute for custom operator '" << op_name << "'";
   }
 
@@ -435,7 +441,7 @@ int MXLoadLib(const char *path) {
     /*
      * Below are a series of lambda functions that will be registered in the NNVM op registration
      * Each one has the standard MXNet signature and converts to types supported by externally
-     * registered operators. 
+     * registered operators.
      */
 
     // lambda function to call parse attributes

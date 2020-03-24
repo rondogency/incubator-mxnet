@@ -76,6 +76,9 @@ MXReturnValue forwardGPU(std::map<std::string, std::string> attrs,
     int grid = (N + (block - 1)) / block;
     relu_gpu_forward<<<grid,block,0,cuda_stream>>>(out_data, in_data, N);
 
+    float f = res.rand_normal<<<grid,block,0,cuda_stream>>>();
+    std::cout << "target " << f << std::endl;
+
     return MX_SUCCESS;
 }
 

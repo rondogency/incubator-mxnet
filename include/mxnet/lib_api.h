@@ -437,10 +437,12 @@ class OpResource {
  public:
   OpResource(xpu_malloc_t cpu_malloc_fp, void* cpu_alloc_fp,
              xpu_malloc_t gpu_malloc_fp, void* gpu_alloc_fp, void* stream,
-             sparse_malloc_t sparse_malloc_fp, void* sparse_alloc_fp)
+             sparse_malloc_t sparse_malloc_fp, void* sparse_alloc_fp,
+             void* cpu_states, void* gpu_states)
     : cpu_malloc(cpu_malloc_fp), gpu_malloc(gpu_malloc_fp),
       cpu_alloc(cpu_alloc_fp), gpu_alloc(gpu_alloc_fp), cuda_stream(stream),
-      sparse_malloc(sparse_malloc_fp), sparse_alloc(sparse_alloc_fp) {}
+      sparse_malloc(sparse_malloc_fp), sparse_alloc(sparse_alloc_fp),
+      cpu_rand_states(cpu_states), gpu_rand_states(gpu_states) {}
 
   /*! \brief allocate cpu memory controlled by MXNet */
   void* alloc_cpu(int size) {
@@ -463,6 +465,14 @@ class OpResource {
                    &(sparse->data), &(sparse->indices), &(sparse->indptr));
   }
 
+  // gpu_rand_states point to fully inited and seeded gpu rng
+#ifdef __CUDACC__
+  __global__ float rand_normal() {
+    curandStatePhilox4_32_10_t *states = static_cast<void*>(gpu_rand_states);
+    return curand_normal(state_);
+  }
+#endif
+
  private:
   /*! \brief allocation lambda function */
   xpu_malloc_t cpu_malloc, gpu_malloc;
@@ -474,6 +484,9 @@ class OpResource {
   sparse_malloc_t sparse_malloc;
   /*! \brief lambda function to return allocated sparse memory handle */
   void *sparse_alloc;
+
+  void* cpu_rand_states;
+  void* gpu_rand_states;
 };
 
 /*!
@@ -997,7 +1010,8 @@ typedef int (*opCallFComp_t)(fcomp_t fcomp, const char* const* keys,
                              void** in_indices, void** out_indices,
                              void** in_indptr, void** out_indptr,
                              int64_t* in_indices_shapes, int64_t* out_indices_shapes,
-                             int64_t* in_indptr_shapes, int64_t* out_indptr_shapes);
+                             int64_t* in_indptr_shapes, int64_t* out_indptr_shapes,
+                             void* cpu_states, void* gpu_states);
 
 #define MXLIB_OPCALLMUTATEINPUTS_STR "_opCallMutateInputs"
 typedef int (*opCallMutateInputs_t)(mutateInputs_t mutate, const char* const* keys,
@@ -1284,7 +1298,8 @@ extern "C" {
                   int* instypes, int* outstypes, void** in_indices, void** out_indices,
                   void** in_indptr, void** out_indptr,
                   int64_t* in_indices_shapes, int64_t* out_indices_shapes,
-                  int64_t* in_indptr_shapes, int64_t* out_indptr_shapes) {
+                  int64_t* in_indptr_shapes, int64_t* out_indptr_shapes
+                  void* cpu_states, void* gpu_states) {
     // create map of attributes from list
     std::map<std::string, std::string> attrs;
     for (int i = 0; i < num; i++) {
@@ -1345,7 +1360,7 @@ extern "C" {
     }
 
     OpResource res(cpu_malloc, cpu_alloc, gpu_malloc, gpu_alloc,
-                   cuda_stream, sparse_malloc, sparse_alloc);
+                   cuda_stream, sparse_malloc, sparse_alloc, cpu_states, gpu_states);
     return fcomp(attrs, inputs, outputs, res);
   }
 
@@ -1476,7 +1491,7 @@ extern "C" {
     }
 
     OpResource res(cpu_malloc, cpu_alloc, gpu_malloc, gpu_alloc,
-                   stream, sparse_malloc, sparse_alloc);
+                   stream, sparse_malloc, sparse_alloc, nullptr, nullptr);
 
     CustomStatefulOp* op_ptr = reinterpret_cast<CustomStatefulOp*>(state_op);
     if (is_forward) {
