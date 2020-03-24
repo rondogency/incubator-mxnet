@@ -26,8 +26,9 @@
 #include <iostream>
 #include "lib_api.h"
 
-__global__ void relu_gpu_forward(float *out, float *in, int64_t N, OpResource *res) {
-    float f = res->rand_normal();
+__global__ void relu_gpu_forward(float *out, float *in, int64_t N, void *states) {
+    curandStatePhilox4_32_10_t *s = (curandStatePhilox4_32_10_t*)states;
+    float f = curand_normal(s);
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < N)
         out[tid] = in[tid] > 0 ? in[tid] : 0;
@@ -75,7 +76,8 @@ MXReturnValue forwardGPU(std::map<std::string, std::string> attrs,
     int64_t N = inputs[0].size();
     int block = 256;
     int grid = (N + (block - 1)) / block;
-    relu_gpu_forward<<<grid,block,0,cuda_stream>>>(out_data, in_data, N, &res);
+    void* states = res.gpu_rand_states;
+    relu_gpu_forward<<<grid,block,0,cuda_stream>>>(out_data, in_data, N, states);
 
     return MX_SUCCESS;
 }

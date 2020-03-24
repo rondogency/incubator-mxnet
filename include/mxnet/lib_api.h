@@ -464,16 +464,18 @@ class OpResource {
     sparse_malloc(sparse_alloc, index, indices_len, indptr_len,
                    &(sparse->data), &(sparse->indices), &(sparse->indptr));
   }
-
+/*
   // gpu_rand_states point to fully inited and seeded gpu rng
 #ifdef __CUDACC__
   #include <curand_kernel.h>
   __device__ float rand_normal() {
-    curandStatePhilox4_32_10_t *states = static_cast<void*>(gpu_rand_states);
+    curandStatePhilox4_32_10_t *states = static_cast<curandStatePhilox4_32_10_t*>(gpu_rand_states);
     return curand_normal(states);
   }
 #endif
-
+*/
+  void* cpu_rand_states;
+  void* gpu_rand_states;
  private:
   /*! \brief allocation lambda function */
   xpu_malloc_t cpu_malloc, gpu_malloc;
@@ -485,9 +487,6 @@ class OpResource {
   sparse_malloc_t sparse_malloc;
   /*! \brief lambda function to return allocated sparse memory handle */
   void *sparse_alloc;
-
-  void* cpu_rand_states;
-  void* gpu_rand_states;
 };
 
 /*!

@@ -733,7 +733,8 @@ int MXLoadLib(const char *path) {
     };
 
     auto resc_req = [=](const NodeAttrs& attrs) {
-      return std::vector<ResourceRequest>{ResourceRequest::kTempSpace};
+      return std::vector<ResourceRequest>{ResourceRequest::kTempSpace,
+                                          ResourceRequest::kParallelRandom};
     };
 
     // library author should implement and return a 'state' which points to an instance
