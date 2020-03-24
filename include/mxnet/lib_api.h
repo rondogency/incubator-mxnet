@@ -1298,7 +1298,7 @@ extern "C" {
                   int* instypes, int* outstypes, void** in_indices, void** out_indices,
                   void** in_indptr, void** out_indptr,
                   int64_t* in_indices_shapes, int64_t* out_indices_shapes,
-                  int64_t* in_indptr_shapes, int64_t* out_indptr_shapes
+                  int64_t* in_indptr_shapes, int64_t* out_indptr_shapes,
                   void* cpu_states, void* gpu_states) {
     // create map of attributes from list
     std::map<std::string, std::string> attrs;
