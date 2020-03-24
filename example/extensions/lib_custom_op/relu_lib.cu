@@ -25,13 +25,15 @@
 
 #include <iostream>
 #include "lib_api.h"
+#include <curand_kernel.h>
 
 __global__ void relu_gpu_forward(float *out, float *in, int64_t N, void *states) {
     curandStatePhilox4_32_10_t *s = (curandStatePhilox4_32_10_t*)states;
-    float f = curand_normal(s);
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid < N)
-        out[tid] = in[tid] > 0 ? in[tid] : 0;
+    if (tid < N) {
+        float f = curand_normal(s);
+        out[tid] = in[tid] + f > 0 ? in[tid] + f : 0;
+    }
 }
 
 __global__ void relu_gpu_backward(float *ingrad, float *outgrad, float *indata, int64_t N) {

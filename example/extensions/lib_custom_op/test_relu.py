@@ -32,53 +32,38 @@ if (os.name=='posix'):
     path = os.path.abspath('librelu_lib.so')
     mx.library.load(path)
 
-a = mx.nd.array([[-2,-1],[1,2]], ctx=mx.cpu())
+class PyRelu(mx.operator.CustomOp):
+    def forward(self, is_train, req, in_data, out_data, aux):
+        rand = mx.nd.random.normal(shape=in_data[0].shape, ctx=mx.gpu(0))
+        x = mx.nd.relu(in_data[0] + rand)
+        self.assign(out_data[0], req[0], x)
+
+    def backward(self, req, out_grad, in_data, out_data, in_grad, aux):
+        self.assign(in_grad[0], req[0], out_grad[0])
+
+@mx.operator.register("pyrelu")
+class PyReluProp(mx.operator.CustomOpProp):
+    def __init__(self):
+        super(PyReluProp, self).__init__(need_top_grad=False)
+
+    def list_arguments(self):
+        return ['data']
+
+    def list_outputs(self):
+        return ['output']
+
+    def infer_shape(self, in_shape):
+        return in_shape, [in_shape[0]], []
+
+    def infer_type(self, in_type):
+        return in_type, [in_type[0]], []
+
+    def create_operator(self, ctx, shapes, dtypes):
+        return PyRelu()
+
 b = mx.nd.array([[-2,-1],[1,2]], ctx=mx.gpu())
 
 print("--------start ndarray compute---------")
-print(mx.nd.my_relu(a))
+mx.random.seed(128, ctx=mx.gpu(0))
+print(mx.nd.Custom(b, op_type='pyrelu'))
 print(mx.nd.my_relu(b))
-print(mx.nd.my_state_relu(a))
-print(mx.nd.my_state_relu(b))
-
-print("--------start symbolic compute--------")
-c = mx.sym.Variable('c')
-d = mx.sym.Variable('d')
-e = mx.sym.my_relu(c)
-base = mx.sym.relu(d)
-in_grad = [mx.nd.empty((2,2), ctx=mx.gpu())]
-in_grad_base = [mx.nd.empty((2,2), ctx=mx.gpu())]
-exe = e.bind(ctx=mx.gpu(), args={'c':b}, args_grad=in_grad)
-exe_base = base.bind(ctx=mx.gpu(), args={'d':b}, args_grad=in_grad_base)
-out = exe.forward()
-out_base = exe_base.forward()
-print(out)
-print(out_base)
-
-print("--------start backward compute--------")
-out_grad = mx.nd.ones((2,2), ctx=mx.gpu())
-exe.backward([out_grad])
-exe_base.backward([out_grad])
-print(in_grad)
-print(in_grad_base)
-
-print("--------start testing larger ndarray---------")
-a = mx.nd.uniform(shape=(100,100,100), ctx=mx.cpu())
-b = mx.nd.uniform(shape=(100,100,100), ctx=mx.gpu())
-mx.nd.waitall()
-t1 = time.time()
-r1 = mx.nd.my_relu(a)
-mx.nd.waitall()
-t2 = time.time()
-r2 = mx.nd.my_relu(b)
-mx.nd.waitall()
-t3 = time.time()
-r3 = mx.nd.relu(b)
-mx.nd.waitall()
-t4 = time.time()
-print("CPU running time:")
-print(t2 - t1)
-print("GPU running time:")
-print(t3 - t2)
-print("Baseline GPU running time:")
-print(t4 - t3)
