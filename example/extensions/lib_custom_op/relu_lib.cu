@@ -26,7 +26,8 @@
 #include <iostream>
 #include "lib_api.h"
 
-__global__ void relu_gpu_forward(float *out, float *in, int64_t N) {
+__global__ void relu_gpu_forward(float *out, float *in, int64_t N, OpResource *res) {
+    float f = res->rand_normal();
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < N)
         out[tid] = in[tid] > 0 ? in[tid] : 0;
@@ -74,10 +75,7 @@ MXReturnValue forwardGPU(std::map<std::string, std::string> attrs,
     int64_t N = inputs[0].size();
     int block = 256;
     int grid = (N + (block - 1)) / block;
-    relu_gpu_forward<<<grid,block,0,cuda_stream>>>(out_data, in_data, N);
-
-    float f = res.rand_normal<<<grid,block,0,cuda_stream>>>();
-    std::cout << "target " << f << std::endl;
+    relu_gpu_forward<<<grid,block,0,cuda_stream>>>(out_data, in_data, N, &res);
 
     return MX_SUCCESS;
 }

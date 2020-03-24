@@ -467,9 +467,10 @@ class OpResource {
 
   // gpu_rand_states point to fully inited and seeded gpu rng
 #ifdef __CUDACC__
-  __global__ float rand_normal() {
+  #include <curand_kernel.h>
+  __device__ float rand_normal() {
     curandStatePhilox4_32_10_t *states = static_cast<void*>(gpu_rand_states);
-    return curand_normal(state_);
+    return curand_normal(states);
   }
 #endif
 

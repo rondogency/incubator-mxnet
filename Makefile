@@ -462,7 +462,7 @@ endif
 .PHONY: clean all extra-packages test lint clean_all rcpplint rcppexport roxygen\
 	cython3 cython cyclean
 
-all: lib/libmxnet.a lib/libmxnet.so $(BIN) extra-packages extension_libs
+all: lib/libmxnet.a lib/libmxnet.so $(BIN) extra-packages
 
 SRC = $(wildcard src/*/*/*/*.cc src/*/*/*.cc src/*/*.cc src/*.cc)
 OBJ = $(patsubst %.cc, build/%.o, $(SRC))
