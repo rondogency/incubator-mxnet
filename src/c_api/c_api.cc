@@ -308,7 +308,8 @@ void CustomFComputeDispatcher(const std::string op_name,
                             in_indices.data(), out_indices.data(),
                             in_indptr.data(), out_indptr.data(),
                             in_indices_shapes.data(), out_indices_shapes.data(),
-                            in_indptr_shapes.data(), out_indptr_shapes.data()))
+                            in_indptr_shapes.data(), out_indptr_shapes.data(),
+                            cpu_states, gpu_states))
       << "Error calling FStatefulCompute for custom operator '" << op_name << "'";
   }
 }

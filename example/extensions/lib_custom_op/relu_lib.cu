@@ -29,12 +29,16 @@
 #include <curand_kernel.h>
 #include <random>
 
-__global__ void relu_gpu_forward(float *out, float *in, int64_t N, void *states) {
+#define BASE_NUM_THREAD 256
+
+__global__ void relu_gpu_forward(float *out, float *in, int64_t N, void *states, int step) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     curandStatePhilox4_32_10_t* global_states = (curandStatePhilox4_32_10_t*)states;
     curandStatePhilox4_32_10_t local_state = global_states[tid];
 
-    for (int i = 0; i < N; i++) {
+    int start = tid * step;
+    int end = start + step;
+    for (int i = start; i < end && i < N; i++) {
         float f = curand_normal(&local_state);
         out[i] = in[i] + f > 0 ? in[i] + f : 0;
     }
@@ -85,9 +89,12 @@ MXReturnValue forwardGPU(std::map<std::string, std::string> attrs,
 
     mx_stream_t cuda_stream = res.get_cuda_stream();
     int64_t N = inputs[0].size();
-    int block = 256;
-    int grid = (N + (block - 1)) / block;
-    relu_gpu_forward<<<1,1,0,cuda_stream>>>(out_data, in_data, N, res.get_gpu_rand_states());
+    int num_thread_need = std::min(32768, (N + 64 - 1) / 64);
+    // number of random number generated from one thread
+    int step = (N + num_thread_need - 1) / num_thread_need;
+    int num_block = (num_thread_need + BASE_NUM_THREAD - 1) / BASE_NUM_THREAD;
+
+    relu_gpu_forward<<<num_block,BASE_NUM_THREAD,0,cuda_stream>>>(out_data, in_data, N, res.get_gpu_rand_states(), step);
 
     return MX_SUCCESS;
 }
@@ -102,9 +109,9 @@ MXReturnValue backwardGPU(std::map<std::string, std::string> attrs,
 
     mx_stream_t cuda_stream = res.get_cuda_stream();
     int64_t N = inputs[0].size();
-    int block = 256;
-    int grid = (N + (block - 1)) / block;
-    relu_gpu_backward<<<grid,block,0,cuda_stream>>>(in_grad, out_grad, in_data, N);
+    int num_block = (N + BASE_NUM_THREAD - 1) / BASE_NUM_THREAD;
+
+    relu_gpu_backward<<<num_block,BASE_NUM_THREAD,0,cuda_stream>>>(in_grad, out_grad, in_data, N);
 
     return MX_SUCCESS;
 }

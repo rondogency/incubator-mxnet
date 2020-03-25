@@ -1039,7 +1039,8 @@ typedef int (*opCallFStatefulComp_t)(int is_forward, void* state_op,
                                      void** in_indices, void** out_indices,
                                      void** in_indptr, void** out_indptr,
                                      int64_t* in_indices_shapes, int64_t* out_indices_shapes,
-                                     int64_t* in_indptr_shapes, int64_t* out_indptr_shapes);
+                                     int64_t* in_indptr_shapes, int64_t* out_indptr_shapes,
+                                     void* cpu_states, void* gpu_states);
 
 #define MXLIB_PARTREGSIZE_STR "_partRegSize"
 typedef int (*partRegSize_t)(void);
@@ -1433,7 +1434,8 @@ extern "C" {
                           int* instypes, int* outstypes, void** in_indices, void** out_indices,
                           void** in_indptr, void** out_indptr,
                           int64_t* in_indices_shapes, int64_t* out_indices_shapes,
-                          int64_t* in_indptr_shapes, int64_t* out_indptr_shapes) {
+                          int64_t* in_indptr_shapes, int64_t* out_indptr_shapes,
+                          void* cpu_states, void* gpu_states) {
     // create a vector of tensors for inputs
     std::vector<MXTensor> inputs(num_in);
     // create a vector for sparse inputs
@@ -1490,7 +1492,7 @@ extern "C" {
     }
 
     OpResource res(cpu_malloc, cpu_alloc, gpu_malloc, gpu_alloc,
-                   stream, sparse_malloc, sparse_alloc, nullptr, nullptr);
+                   stream, sparse_malloc, sparse_alloc, cpu_states, gpu_states);
 
     CustomStatefulOp* op_ptr = reinterpret_cast<CustomStatefulOp*>(state_op);
     if (is_forward) {
