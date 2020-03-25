@@ -253,11 +253,13 @@ void CustomFComputeDispatcher(const std::string op_name,
   }
 #endif
 
-  mxnet::common::random::RandGenerator<gpu, float> *pgen =
+  // get mxnet inited rng states and pass to custom library
+  mxnet::common::random::RandGenerator<cpu, float> *pgen_cpu =
+      ctx.requested[1].get_parallel_random<cpu, float>();
+  mxnet::common::random::RandGenerator<gpu, float> *pgen_gpu =
       ctx.requested[1].get_parallel_random<gpu, float>();
-  void* cpu_states = nullptr;
-  void* gpu_states = pgen->GetStates();
-  CHECK(gpu_states != nullptr) << "gpu states nullptr";
+  void* cpu_states = pgen_cpu->GetStates();
+  void* gpu_states = pgen_gpu->GetStates();
 
   CHECK((fcomp_fp != nullptr && state_ptr == nullptr)
         || (fcomp_fp == nullptr && state_ptr != nullptr))

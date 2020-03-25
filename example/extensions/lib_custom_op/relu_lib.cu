@@ -25,14 +25,18 @@
 
 #include <iostream>
 #include "lib_api.h"
+
 #include <curand_kernel.h>
+#include <random>
 
 __global__ void relu_gpu_forward(float *out, float *in, int64_t N, void *states) {
-    curandStatePhilox4_32_10_t *s = (curandStatePhilox4_32_10_t*)states;
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid < N) {
-        float f = curand_normal(s);
-        out[tid] = in[tid] + f > 0 ? in[tid] + f : 0;
+    curandStatePhilox4_32_10_t* global_states = (curandStatePhilox4_32_10_t*)states;
+    curandStatePhilox4_32_10_t local_state = global_states[tid];
+
+    for (int i = 0; i < N; i++) {
+        float f = curand_normal(&local_state);
+        out[i] = in[i] + f > 0 ? in[i] + f : 0;
     }
 }
 
@@ -48,8 +52,13 @@ MXReturnValue forwardCPU(std::map<std::string, std::string> attrs,
                          OpResource res) {
     float* in_data = inputs[0].data<float>();
     float* out_data = outputs[0].data<float>();
+
+    std::mt19937 *st = static_cast<std::mt19937*>(res.get_cpu_rand_states());
+
     for (int i=0; i<inputs[0].size(); i++) {
-        out_data[i] = in_data[i] > 0 ? in_data[i] : 0;
+        std::normal_distribution<float> dist_normal;
+        float f = dist_normal(*st);
+        out_data[i] = in_data[i] + f > 0 ? in_data[i] + f : 0;
     }
     return MX_SUCCESS;
 }
@@ -78,8 +87,7 @@ MXReturnValue forwardGPU(std::map<std::string, std::string> attrs,
     int64_t N = inputs[0].size();
     int block = 256;
     int grid = (N + (block - 1)) / block;
-    void* states = res.gpu_rand_states;
-    relu_gpu_forward<<<grid,block,0,cuda_stream>>>(out_data, in_data, N, states);
+    relu_gpu_forward<<<1,1,0,cuda_stream>>>(out_data, in_data, N, res.get_gpu_rand_states());
 
     return MX_SUCCESS;
 }

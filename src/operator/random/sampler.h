@@ -49,11 +49,15 @@ inline static void LaunchRNG(mshadow::Stream<xpu> *s,
   if (N <= 0) {
     return;
   }
+  LOG(INFO) << "Big N: " << N;
   const index_t nloop = (N + RandGenerator<xpu>::kMinNumRandomPerThread - 1) /
                     RandGenerator<xpu>::kMinNumRandomPerThread;
+  LOG(INFO) << "nloop: " << nloop;
   const index_t nthread = std::min(nloop,
                                    static_cast<index_t>(RandGenerator<xpu>::kNumRandomStates));
+  LOG(INFO) << "nthread: " << nthread;
   const index_t step = (N + nthread - 1) / nthread;
+  LOG(INFO) << "step: " << step;
   Kernel<OP, xpu>::Launch(s, nthread, *gen, N, step, args...);
 }
 
@@ -132,7 +136,11 @@ struct SampleNormalKernel {
                                   const index_t N, const index_t step,
                                   index_t nParm, index_t nSample,
                                   const IType *mean, const IType *std, OType *out) {
+    printf("thread id: %d\n", id);
     RNG_KERNEL_LOOP(xpu, OType, id, gen, N, step, {
+      printf("N: %d\n", N);
+      printf("i: %d\n", i);
+      printf("step: %d\n", step);
       index_t nBatch(1 + (nSample - 1) / nParm);
       out[i] = OType(genImpl.normal() * std[i / nBatch] + mean[i / nBatch]);
     });
