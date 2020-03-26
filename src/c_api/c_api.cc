@@ -248,18 +248,21 @@ void CustomFComputeDispatcher(const std::string op_name,
   // get actual cudaStream_t out of mxnet gpu stream and pass to lib_api.h
   void *cuda_stream = nullptr;
 #if MXNET_USE_CUDA
-  if (inputs[0].ctx().dev_mask() == Context::kGPU) {
+  if (inputs.size() > 0 && inputs[0].ctx().dev_mask() == Context::kGPU) {
     cuda_stream = static_cast<void*>(gpu_stream->stream_);
   }
 #endif
 
-  // get mxnet inited rng states and pass to custom library
+  // get mxnet inited and seeded rng states and pass to custom library
+  void *cpu_states = nullptr, *gpu_states = nullptr;
   mxnet::common::random::RandGenerator<cpu, float> *pgen_cpu =
       ctx.requested[1].get_parallel_random<cpu, float>();
+  cpu_states = pgen_cpu->GetStates();
+#if MXNET_USE_CUDA
   mxnet::common::random::RandGenerator<gpu, float> *pgen_gpu =
       ctx.requested[1].get_parallel_random<gpu, float>();
-  void* cpu_states = pgen_cpu->GetStates();
-  void* gpu_states = pgen_gpu->GetStates();
+  gpu_states = pgen_gpu->GetStates();
+#endif
 
   CHECK((fcomp_fp != nullptr && state_ptr == nullptr)
         || (fcomp_fp == nullptr && state_ptr != nullptr))

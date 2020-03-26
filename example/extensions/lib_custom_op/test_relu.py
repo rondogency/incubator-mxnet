@@ -32,8 +32,8 @@ if (os.name=='posix'):
     path = os.path.abspath('librelu_lib.so')
     mx.library.load(path)
 
-a = mx.nd.array([[1,2],[3,4]], ctx=mx.cpu())
-b = mx.nd.array([[1,2],[3,4]], ctx=mx.gpu())
+a = mx.nd.ones(shape=(13,5), ctx=mx.cpu())
+b = mx.nd.ones(shape=(13,5), ctx=mx.gpu())
 
 print("--------start ndarray compute---------")
 mx.random.seed(128, ctx=mx.cpu())
@@ -41,10 +41,17 @@ noise = mx.nd.random.normal(shape=a.shape, ctx=mx.cpu())
 print(mx.nd.relu(a + noise))
 
 mx.random.seed(128, ctx=mx.cpu())
-print(mx.nd.my_relu(a))
+print(mx.nd.my_noisy_relu(a))
+
+mx.random.seed(128, ctx=mx.cpu())
+print(mx.nd.my_noisy_relu(a))
 
 mx.random.seed(128, ctx=mx.gpu())
 noise = mx.nd.random.normal(shape=b.shape, ctx=mx.gpu())
 print(mx.nd.relu(b + noise))
+
 mx.random.seed(128, ctx=mx.gpu())
-print(mx.nd.my_relu(b))
+print(mx.nd.my_noisy_relu(b))
+
+mx.random.seed(128, ctx=mx.gpu())
+print(mx.nd.my_noisy_relu(b))
