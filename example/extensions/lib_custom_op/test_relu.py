@@ -32,8 +32,8 @@ if (os.name=='posix'):
     path = os.path.abspath('librelu_lib.so')
     mx.library.load(path)
 
-a = mx.nd.ones(shape=(13,5), ctx=mx.cpu())
-b = mx.nd.ones(shape=(13,5), ctx=mx.gpu())
+a = mx.nd.ones(shape=(10,10), ctx=mx.cpu())
+b = mx.nd.ones(shape=(10,10), ctx=mx.gpu())
 
 print("--------start ndarray compute---------")
 mx.random.seed(128, ctx=mx.cpu())

@@ -184,7 +184,7 @@ REGISTER_OP(my_state_relu)
 
 
 
-/* -------------------- ---- Below is noisy relu implementation ---------------------*/
+/* ------------------------ Below is noisy relu operator example ---------------------*/
 
 #include <curand_kernel.h>
 #include <random>
@@ -193,15 +193,14 @@ REGISTER_OP(my_state_relu)
 
 __global__ void noisy_relu_gpu_forward(float *out, float *in, int64_t N, void *states, int step) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
     curandStatePhilox4_32_10_t* global_states = (curandStatePhilox4_32_10_t*)states;
-    curandStatePhilox4_32_10_t local_state = global_states[tid];
+    curandStatePhilox4_32_10_t thread_state = global_states[tid];
 
     int start = tid * step;
     int end = start + step;
-    for (int i = start; i < end && i < N; ++i) {
-        float f = curand_normal(&local_state);
-        out[i] = in[i] + f > 0 ? in[i] + f : 0;
+    for (int i=start; i<end && i<N; ++i) {
+        float noise = curand_normal(&thread_state);
+        out[i] = in[i] + noise > 0 ? in[i] + noise : 0;
     }
 }
 
@@ -212,22 +211,12 @@ MXReturnValue noisyForwardCPU(std::map<std::string, std::string> attrs,
     float* in_data = inputs[0].data<float>();
     float* out_data = outputs[0].data<float>();
 
-    int64_t N = inputs[0].size();
-    int num_loop_need = (N + NumRandomPerThread - 1) / NumRandomPerThread;
-    int step = (N + num_loop_need - 1) / num_loop_need;
-
-    std::mt19937 *global_states = static_cast<std::mt19937*>(res.get_cpu_rand_states());
+    std::mt19937 *states = static_cast<std::mt19937*>(res.get_cpu_rand_states());
     std::normal_distribution<float> dist_normal;
 
-    for (int j = 0; j < num_loop_need; ++j) {
-        std::mt19937 local_state = global_states[j];
-
-        int start = j * step;
-        int end = start + step;
-        for (int i = start; i < end && i < N; ++i) {
-            float f = dist_normal(local_state);
-            out_data[i] = in_data[i] + f > 0 ? in_data[i] + f : 0;
-        }
+    for (int i=0; i<inputs[0].size(); ++i) {
+        float noise = dist_normal(*states);
+        out_data[i] = in_data[i] + noise > 0 ? in_data[i] + noise : 0;
     }
     return MX_SUCCESS;
 }
@@ -243,11 +232,12 @@ MXReturnValue noisyForwardGPU(std::map<std::string, std::string> attrs,
     int64_t N = inputs[0].size();
 
     int num_thread_need = (N + NumRandomPerThread - 1) / NumRandomPerThread;
-    // number of random number generated from one thread
+    // each cuda thread processes [step * tid, step * id + step) snippet of input tensor
     int step = (N + num_thread_need - 1) / num_thread_need;
     int num_block = (num_thread_need + NumThreadPerBlock - 1) / NumThreadPerBlock;
+    void *global_states = res.get_gpu_rand_states();
 
-    noisy_relu_gpu_forward<<<num_block,NumThreadPerBlock,0,cuda_stream>>>(out_data, in_data, N, res.get_gpu_rand_states(), step);
+    noisy_relu_gpu_forward<<<num_block,NumThreadPerBlock,0,cuda_stream>>>(out_data, in_data, N, global_states, step);
 
     return MX_SUCCESS;
 }
