@@ -20,9 +20,8 @@
 /*!
  * Copyright (c) 2019 by Contributors
  * \file lib_api.h
- * \brief APIs to interact with libraries
- * This API specifies function prototypes to
- * register custom ops for library authors
+ * \brief APIs to write C++ custom operators
+ * See example/extension/lib_custom_op/README.md for details
  */
 
 #ifndef MXNET_LIB_API_H_
@@ -44,8 +43,15 @@
   #include <curand_kernel.h>
 #endif
 
-/* Make sure to update the version number everytime you make changes */
-#define MX_LIBRARY_VERSION 6
+/*!
+ * \brief
+ * Custom operator API version number
+ * first digit for major backward incompatible changes
+ * second digit for minor backward compatible changes
+ * Make sure to update the version number everytime you make changes to API
+ */
+
+#define MX_LIBRARY_VERSION 10
 
 /*!
  * \brief For loading multiple custom op libraries in Linux, exporting same symbol multiple
