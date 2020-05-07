@@ -1349,7 +1349,3 @@ def test_cosine_scheduler():
     np.testing.assert_almost_equal(cosine_sched(0), base_lr)
     np.testing.assert_almost_equal(cosine_sched(steps), final_lr)
     assert (cosine_sched(500) > 1.5)
-
-if __name__ == '__main__':
-    import nose
-    nose.runmodule()
