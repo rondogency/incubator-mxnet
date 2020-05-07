@@ -1343,6 +1343,9 @@ def test_np_array_ufunc_protocol():
     check_interoperability(_NUMPY_ARRAY_UFUNC_LIST)
 
 
-if __name__ == '__main__':
-    import nose
-    nose.runmodule()
+@with_seed()
+@use_np
+@pytest.mark.serial
+def test_np_fallback_ops():
+    op_list = np.fallback.__all__ + ['linalg.{}'.format(op_name) for op_name in np.fallback_linalg.__all__]
+    check_interoperability(op_list)
